@@ -27,6 +27,7 @@
 		<path id="ant.contrib.classpath" path="${ant.home}/lib/ant-contrib.jar"/>
 		<typedef resource="net/sf/antcontrib/antlib.xml" classpathref="ant.contrib.classpath"/>
 
+	
   <!-- ====================================================================== -->
   <!-- Build environment properties                                           -->
   <!-- ====================================================================== -->
@@ -244,6 +245,7 @@
     <echo>=======================================================================================</echo>
   </target>
 
+
   <!-- ====================================================================== -->
   <!-- Javadoc target                                                         -->
   <!-- ====================================================================== -->
@@ -306,168 +308,4 @@
 	  <mapper>
 	    <chainedmapper>
 	       <flattenmapper/>
-	       <globmapper from="*.jar" to="${project.3rdpartylibdir}/*.jar"/>
-	    </chainedmapper>
-	  </mapper>
-	</pathconvert>
-    <jar jarfile="${maven.build.dir}/${maven.build.finalName}.jar" 
-         compress="true"   index="false" 
-         basedir="${maven.build.outputDir}"  excludes="**/package.html">
-    	 <manifest>
-    	  	<attribute name="Built-By" value="${user.name}"/>
-    	 	<attribute name="Created-By" value="Build Tool V1"/>
-    	    <attribute name="Implementation-Title" value="${actualbuildname}.jar"/>
-    	    <attribute name="Implementation-Version" value="${maven.build.version}-${MYTIME}"/> 
-    	    <attribute name="Implementation-Vendor" value="SeshagiriSriram"/>
-    	 	<attribute name="Class-Path" value="${manifest.classpath}"/>
-    	 </manifest>
-   </jar>
-  </target>
-
-  <!-- ====================================================================== -->
-  <!-- A dummy target for the package named after the type it creates         -->
-  <!-- ====================================================================== -->
-  <target name="jar" depends="package" description="Builds the jar for the application"/>
-
-  <!-- ====================================================================== -->
-  <!-- Zips files into a zip for deployment                                   -->
-  <!-- ====================================================================== -->
-	  <target name="zip" depends="package" description="Zips all Resources">
-	  	<if>
-	  					 <equals arg1="${zipoutput}" arg2="$${zipoutput}"/>
-	  					 <then>
-	  					 	<property name="zipoutputdir" value="${maven.build.dir}"/>
-	  					</then> 
-	  					 	<else>
-	  					 		<property name="zipoutputdir" value="${zipoutput}"/>
-	  					    </else>
-	  	</if>
-	  	<echo message="Copying files from ${maven.build.resourceDir} to ${maven.build.dir}/tmp"/>
-		<mkdir dir="${maven.build.dir}/tmp"/>
-	  	<mkdir dir="${zipoutputdir}"/>
-	  	<echo message="Resource Directory: ${maven.build.resourceDir}" /> 
-	  	<copy todir="${maven.build.dir}/tmp" overwrite="true">
-	  		<fileset dir="${maven.build.resourceDir}"/>
-	  		<file name="${maven.build.dir}/${maven.build.finalName}.jar"/>
-	  	</copy>
-	  	<zip destfile="${zipoutputdir}/${maven.build.finalName}.zip">
-	  		<zipfileset dir="${maven.build.dir}/tmp" includes="*.properties,*.xml,*.txt, ${maven.build.finalName}.jar"/>
-	  		<zipfileset dir="./lib" prefix="lib"/> 
-	  	</zip>
-		<delete dir="${maven.build.dir}/tmp"/>
-	  	<delete dir="${project.3rdpartylibdir}"/>
-	  	<mkdir dir="${project.3rdpartylibdir}"/>
-	  	<delete file="${maven.build.dir}/../${maven.build.finalName}.zip"/> 
-	  </target>
-
-  <!-- ====================================================================== -->
-  <!-- Download dependencies target                                           -->
-  <!-- ====================================================================== -->
-  <target name="test-offline" description="Checks if Maven has been configured to run in offline mode">
-    <condition property="maven.mode.offline">
-      <equals arg1="${maven.settings.offline}" arg2="true"/>
-    </condition>
-  </target>
-
-   <!-- ====================================================================== -->
-   <!-- Installs components to Artifactory                                     -->
-   <!-- ====================================================================== -->
-	<target name="install" depends="zip" description="Installs the JAR to artifactory"> 
-			<echo message="Maven is found in: ${env.MAVEN_HOME}"/>
-			<artifact:deploy file="${maven.build.dir}/${maven.build.finalName}.jar">
-			      <pom file="pom.xml"/>
-			    <remoteRepository url="${env.BUILD_URL}"/>
-			 </artifact:deploy>
-	   </target>
-
-   <!-- ====================================================================== -->
-   <!-- Performs SonarQube Analysis on code                                    -->
-   <!-- ====================================================================== -->
-	<target name="sonar" description="Performs SonarQube Analysis on code">
-	<taskdef uri="antlib:org.sonar.ant" resource="org/sonar/ant/antlib.xml"  classpathref="maven-ant-tasks.classpath" />
-	<!-- Execute the SonarQube analysis -->
-	<sonar:sonar />
-	</target> 
-
-  <!-- ====================================================================== -->
-  <!-- Copy files required for instrumentation                                -->
-  <!-- ====================================================================== -->
-	
-	<target name="prepare" depends="clean, maven_dep_copy">
-	    <mkdir dir="${maven.reporting.outputDirectory}" />
-	    <!-- cobertura directories -->
-	    <mkdir dir="${cobertura.dir}" />
-	    <mkdir dir="${cob.instrumented.dir}" />
-	    <mkdir dir="${cob.reports.xml.dir}" />
-	    <mkdir dir="${cob.reports.html.dir}" />
-	    <mkdir dir="${cob.coverage.xml.dir}" />
-	    <mkdir dir="${cob.coverage.html.dir}" />
-		<!-- WE DO NOT HAVE LIBS IN OUR APPLICTION - SO WE DEFINE THE TASK AFTER GETTING THE FILE --> 
-		<path id="cobertura.classpath">
-			<fileset dir="${lib.cobertura.dir}">
-			        <include name="cobertura.jar" />
-			        <include name="lib/**/*.jar" />
-			    </fileset>
-		    <fileset dir="${project.3rdpartylibdir}"/>
-		  </path>
-		  <taskdef resource="tasks.properties" classpathref="cobertura.classpath"/>
-	  </target>
-	
-  <!-- ====================================================================== -->
-  <!-- Do Actual Instrumentation                                              -->
-  <!-- ====================================================================== -->
-
-	<target name="instrument" depends="prepare,compile-tests">
-		<echo>Class Path: ${toString:cobertura.classpath}</echo>
-	    <cobertura-instrument todir="${cob.instrumented.dir}">
-	      <fileset dir="${maven.build.outputDir}">
-	        <include name="**/*.class"/>
-	      </fileset>
-	    </cobertura-instrument>
-	  </target>
-	
-  <!-- ====================================================================== -->
-  <!-- Call Instrumentation                                                   -->
-  <!-- ====================================================================== -->
-
-	  <target name="cover-test" depends="instrument">
-	  	<echo message="Instrumented dir:${cob.instrumented.dir}"/>
-	  	<junit printSummary="yes" haltonerror="no" haltonfailure="no" fork="yes" dir=".">
-	  	      <sysproperty key="basedir" value="."/>
-	  	    <sysproperty key="net.sourceforge.cobertura.datafile"
-	  	        file="${cob.ser.file}" />
-	  	    <!--
-	  	        Note the classpath order: instrumented classes are before the
-	  	        original (uninstrumented) classes.  This is important.
-	  	    -->
-	  	    <classpath location="${cob.instrumented.dir}" />
-	  	    <classpath location="${maven.build.outputDir}" />
-	  		<classpath refid="cobertura.classpath" />
-		  	  <classpath>
-	  	     	<fileset dir="${project.3rdpartylibdir}"/>
-	  	        <pathelement location="${maven.build.testOutputDir}"/>
-	  	      </classpath>
-	  	   
-	        <batchtest skipNonTests="false" todir="${maven.test.reports}">
-	          <fileset dir="${maven.build.testDir}">
-	            <include name="**/Test*.java"/>
-	            <include name="**/*Test.java"/>
-	            <include name="**/*TestCase.java"/>
-	            <exclude name="**/*Abstract*Test.java"/>
-	          </fileset>
-	        </batchtest>
-
-		</junit>
-	  </target>
-	
-  <!-- ====================================================================== -->
-  <!-- Report on this....                                                     -->
-  <!-- ====================================================================== -->
-
-	  <!-- run this target to generate the coverage reports -->
-	  <target name="coverage-report" depends="cover-test">
-	    <cobertura-report srcdir="${src.dir}" destdir="${cobertura.dir}"/>
-	  </target>
-
-
-</project>
+	       
